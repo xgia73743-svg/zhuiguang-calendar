@@ -1132,6 +1132,134 @@
       height: 16px;
     }
 
+    .ai-lookup-row {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .ai-lookup-row input {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .ai-lookup-row .btn {
+      flex: 0 0 auto;
+      min-height: 43px;
+      white-space: nowrap;
+    }
+
+    .ai-status {
+      min-height: 18px;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.65;
+    }
+
+    .ai-status.is-loading {
+      color: var(--accent-deep);
+    }
+
+    .ai-status.is-success {
+      color: var(--sage);
+    }
+
+    .ai-status.is-error {
+      color: var(--danger);
+    }
+
+    .ai-result {
+      margin-top: 9px;
+      padding: 11px 12px;
+      border: 1px solid color-mix(in srgb, var(--sage) 26%, var(--line));
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--sage-soft) 38%, var(--panel-soft));
+      font-size: 10px;
+      line-height: 1.65;
+    }
+
+    .ai-result[hidden] {
+      display: none;
+    }
+
+    .ai-result-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .ai-confidence {
+      color: var(--sage);
+      font-size: 9px;
+      font-weight: 600;
+    }
+
+    .ai-result p {
+      margin: 4px 0 0;
+      color: var(--muted);
+    }
+
+    .ai-source-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px 12px;
+      margin-top: 7px;
+    }
+
+    .ai-source-list a {
+      color: var(--accent-deep);
+      text-decoration: none;
+    }
+
+    .ai-source-list a:hover {
+      text-decoration: underline;
+    }
+
+    .ai-config-link {
+      margin-top: 6px;
+      padding: 0;
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      font-size: 10px;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+
+    .ai-settings-form {
+      padding: 20px 24px 4px;
+    }
+
+    .ai-security-note {
+      margin: 13px 0 0;
+      padding: 10px 12px;
+      border-radius: 11px;
+      color: var(--muted);
+      background: var(--panel-soft);
+      font-size: 10px;
+      line-height: 1.7;
+    }
+
+    .remember-row {
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .remember-row input {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--accent);
+    }
+
     .show-form {
       padding: 19px 24px 0;
       overflow-y: auto;
@@ -1587,9 +1715,19 @@
 
       .dialog-head,
       .show-form,
+      .ai-settings-form,
       .dialog-actions {
         padding-left: 18px;
         padding-right: 18px;
+      }
+
+      .ai-lookup-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .ai-lookup-row .btn {
+        width: 100%;
       }
 
       .toast-region {
@@ -1794,7 +1932,20 @@
       <div class="form-grid">
         <div class="field full">
           <label for="showTitleInput">剧名</label>
-          <input id="showTitleInput" name="title" maxlength="30" placeholder="例如：漫长的季节" autocomplete="off" required>
+          <div class="ai-lookup-row">
+            <input id="showTitleInput" name="title" maxlength="30" placeholder="输入片名，例如：漫长的季节" autocomplete="off" required>
+            <button class="btn btn-secondary" id="aiFillBtn" type="button">AI 联网识别</button>
+          </div>
+          <div class="ai-status" id="aiStatus" role="status" aria-live="polite">输入片名后，让 AI 自动查找平台、更新时间、集数和具体排播。</div>
+          <div class="ai-result" id="aiResult" hidden>
+            <div class="ai-result-head">
+              <span>已识别，保存前请核对</span>
+              <span class="ai-confidence" id="aiConfidence"></span>
+            </div>
+            <p id="aiResultNote"></p>
+            <div class="ai-source-list" id="aiSourceList"></div>
+          </div>
+          <button class="ai-config-link" id="aiSettingsBtn" type="button">配置 AI 服务</button>
         </div>
         <div class="field">
           <label for="platformInput">播出平台</label>
@@ -1848,6 +1999,49 @@
     </div>
   </dialog>
 
+  <dialog id="aiSettingsDialog" aria-labelledby="aiSettingsTitle">
+    <div class="dialog-head">
+      <div>
+        <h2 id="aiSettingsTitle">AI 服务设置</h2>
+        <p>密钥从当前浏览器直接发送给 OpenAI，不会写入网站代码或 GitHub 仓库。</p>
+      </div>
+      <button class="dialog-close" id="aiSettingsClose" type="button" aria-label="关闭">
+        <svg aria-hidden="true"><use href="#icon-close"></use></svg>
+      </button>
+    </div>
+    <form class="ai-settings-form" id="aiSettingsForm">
+      <div class="form-grid">
+        <div class="field full">
+          <label for="aiKeyInput">OpenAI API Key</label>
+          <input id="aiKeyInput" type="password" autocomplete="off" placeholder="sk-...">
+        </div>
+        <div class="field full">
+          <label for="aiModelInput">模型</label>
+          <input id="aiModelInput" type="text" autocomplete="off" value="gpt-5-mini" placeholder="gpt-5-mini">
+        </div>
+        <div class="field full">
+          <label for="aiEndpointInput">代理服务地址</label>
+          <input id="aiEndpointInput" type="url" autocomplete="off" value="/api/ai" placeholder="/api/ai">
+        </div>
+        <label class="field full remember-row">
+          <input id="aiRememberInput" type="checkbox">
+          在这台设备的浏览器中记住密钥
+        </label>
+      </div>
+      <p class="ai-security-note">
+        未勾选“记住密钥”时，密钥仅在当前标签页会话中使用。联网搜索结果仍可能出错，保存前请核对来源。
+      </p>
+      <p class="form-error" id="aiSettingsError" role="alert"></p>
+    </form>
+    <div class="dialog-actions">
+      <button class="delete-btn" id="aiClearBtn" type="button">清除密钥</button>
+      <div class="dialog-actions-right">
+        <button class="btn btn-secondary" id="aiSettingsCancel" type="button">取消</button>
+        <button class="btn btn-primary" id="aiSettingsSave" type="submit" form="aiSettingsForm">保存设置</button>
+      </div>
+    </div>
+  </dialog>
+
   <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
 
   <script>
@@ -1861,8 +2055,52 @@
       const DAY_NAMES = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
       const MONTH_NAMES = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
       const COLORS = ["#ee735a", "#5f8b76", "#dfad43", "#5d83be", "#a473b0", "#cc6b83"];
+      const AI_SETTINGS_KEY = "zhuiguang-ai-settings";
+      const AI_SCHEDULE_SCHEMA = {
+        type: "object",
+        additionalProperties: false,
+        required: ["show", "events", "sourceUrls", "confidence", "notes"],
+        properties: {
+          show: {
+            type: "object",
+            additionalProperties: false,
+            required: ["title", "platform", "premiereDate", "updateTime", "weekdays", "totalEpisodes", "scheduleNote"],
+            properties: {
+              title: { type: "string" },
+              platform: { type: "string" },
+              premiereDate: { type: "string" },
+              updateTime: { type: "string" },
+              weekdays: { type: "array", items: { type: "integer", minimum: 0, maximum: 6 } },
+              totalEpisodes: { type: "integer", minimum: 0, maximum: 500 },
+              scheduleNote: { type: "string" }
+            }
+          },
+          events: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["date", "label", "accessLabel", "platform", "time", "sourceUrl"],
+              properties: {
+                date: { type: "string" },
+                label: { type: "string" },
+                accessLabel: { type: "string" },
+                platform: { type: "string" },
+                time: { type: "string" },
+                sourceUrl: { type: "string" }
+              }
+            }
+          },
+          sourceUrls: { type: "array", items: { type: "string" } },
+          confidence: { type: "number", minimum: 0, maximum: 1 },
+          notes: { type: "string" }
+        }
+      };
       const reminderSent = new Set();
       let toastTimer = 0;
+      let pendingAiResult = null;
+      let aiSettings = loadAiSettings();
+      let aiSettingsReturnToShow = false;
 
       const pad = (value) => String(value).padStart(2, "0");
       const dateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -1882,6 +2120,22 @@
         '"': "&quot;",
         "'": "&#039;"
       }[char]));
+
+      function loadAiSettings() {
+        try {
+          const raw = localStorage.getItem(AI_SETTINGS_KEY) || sessionStorage.getItem(AI_SETTINGS_KEY);
+          if (!raw) return { apiKey: "", model: "gpt-5-mini", endpoint: "/api/ai", remember: false };
+          const parsed = JSON.parse(raw);
+          return {
+            apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : "",
+            model: typeof parsed.model === "string" && parsed.model ? parsed.model : "gpt-5-mini",
+            endpoint: typeof parsed.endpoint === "string" && parsed.endpoint ? parsed.endpoint : "/api/ai",
+            remember: localStorage.getItem(AI_SETTINGS_KEY) !== null
+          };
+        } catch (error) {
+          return { apiKey: "", model: "gpt-5-mini", endpoint: "/api/ai", remember: false };
+        }
+      }
 
       function makeAfterMeetEpisodes() {
         const episodes = [
@@ -2094,6 +2348,24 @@
         closeDialog: document.getElementById("closeDialog"),
         cancelDialog: document.getElementById("cancelDialog"),
         saveShowBtn: document.getElementById("saveShowBtn"),
+        aiFillBtn: document.getElementById("aiFillBtn"),
+        aiStatus: document.getElementById("aiStatus"),
+        aiResult: document.getElementById("aiResult"),
+        aiConfidence: document.getElementById("aiConfidence"),
+        aiResultNote: document.getElementById("aiResultNote"),
+        aiSourceList: document.getElementById("aiSourceList"),
+        aiSettingsBtn: document.getElementById("aiSettingsBtn"),
+        aiSettingsDialog: document.getElementById("aiSettingsDialog"),
+        aiSettingsForm: document.getElementById("aiSettingsForm"),
+        aiKeyInput: document.getElementById("aiKeyInput"),
+        aiModelInput: document.getElementById("aiModelInput"),
+        aiEndpointInput: document.getElementById("aiEndpointInput"),
+        aiRememberInput: document.getElementById("aiRememberInput"),
+        aiSettingsError: document.getElementById("aiSettingsError"),
+        aiSettingsClose: document.getElementById("aiSettingsClose"),
+        aiSettingsCancel: document.getElementById("aiSettingsCancel"),
+        aiSettingsSave: document.getElementById("aiSettingsSave"),
+        aiClearBtn: document.getElementById("aiClearBtn"),
         toastRegion: document.getElementById("toastRegion")
       };
 
@@ -2381,6 +2653,232 @@
         toastTimer = window.setTimeout(() => toast.remove(), duration);
       }
 
+      function setAiStatus(message, stateName = "") {
+        el.aiStatus.textContent = message;
+        el.aiStatus.className = `ai-status${stateName ? ` is-${stateName}` : ""}`;
+      }
+
+      function resetAiLookup(show = null) {
+        pendingAiResult = null;
+        el.aiResult.hidden = true;
+        el.aiSourceList.replaceChildren();
+        setAiStatus(show
+          ? "可直接修改现有设置，也可以重新输入片名并点击 AI 联网识别。"
+          : "输入片名后，让 AI 自动查找平台、更新时间、集数和具体排播。");
+      }
+
+      function openAiSettings() {
+        aiSettingsReturnToShow = el.dialog.open;
+        el.aiSettingsError.textContent = "";
+        el.aiKeyInput.value = aiSettings.apiKey;
+        el.aiModelInput.value = aiSettings.model;
+        el.aiEndpointInput.value = aiSettings.endpoint;
+        el.aiRememberInput.checked = aiSettings.remember;
+        if (!el.aiSettingsDialog.open) el.aiSettingsDialog.showModal();
+        window.setTimeout(() => (aiSettings.apiKey ? el.aiModelInput : el.aiKeyInput).focus(), 30);
+      }
+
+      function closeAiSettings() {
+        if (el.aiSettingsDialog.open) el.aiSettingsDialog.close();
+        if (aiSettingsReturnToShow && !el.dialog.open) el.dialog.showModal();
+        aiSettingsReturnToShow = false;
+      }
+
+      function persistAiSettings() {
+        localStorage.removeItem(AI_SETTINGS_KEY);
+        sessionStorage.removeItem(AI_SETTINGS_KEY);
+        const target = aiSettings.remember ? localStorage : sessionStorage;
+        target.setItem(AI_SETTINGS_KEY, JSON.stringify(aiSettings));
+      }
+
+      function extractResponseText(data) {
+        if (typeof data.output_text === "string" && data.output_text.trim()) return data.output_text;
+        for (const item of data.output || []) {
+          if (item.type !== "message") continue;
+          for (const content of item.content || []) {
+            if (content.type === "output_text" && content.text) return content.text;
+          }
+        }
+        return "";
+      }
+
+      function normalizeTitle(value) {
+        return String(value || "").toLowerCase().replace(/[\s·:：\-—_《》“”"'']/g, "");
+      }
+
+      function applyAiSchedule(payload) {
+        const sourceUrls = Array.from(new Set([
+          ...(Array.isArray(payload.sourceUrls) ? payload.sourceUrls : []),
+          ...(Array.isArray(payload.events) ? payload.events.map((event) => event.sourceUrl) : [])
+        ].filter((url) => {
+          try {
+            const parsed = new URL(url);
+            return parsed.protocol === "https:" || parsed.protocol === "http:";
+          } catch (error) {
+            return false;
+          }
+        }))).slice(0, 8);
+
+        const events = (Array.isArray(payload.events) ? payload.events : [])
+          .filter((event) => event && /^\d{4}-\d{2}-\d{2}$/.test(event.date || "") && /^\d{2}:\d{2}$/.test(event.time || ""))
+          .filter((event) => event.date >= dateKey(today))
+          .map((event) => ({
+            date: event.date,
+            label: String(event.label || "更新").slice(0, 80),
+            accessLabel: String(event.accessLabel || "正片").slice(0, 80),
+            platform: String(event.platform || payload.show?.platform || "待确认").slice(0, 80),
+            time: event.time,
+            sourceUrl: String(event.sourceUrl || "")
+          }))
+          .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+
+        const show = payload.show || {};
+        const title = String(show.title || el.titleInput.value.trim()).slice(0, 30);
+        const premiere = /^\d{4}-\d{2}-\d{2}$/.test(show.premiereDate || "")
+          ? show.premiereDate
+          : (events[0]?.date || dateKey(today));
+        const time = /^\d{2}:\d{2}$/.test(show.updateTime || "")
+          ? show.updateTime
+          : (events[0]?.time || "20:00");
+        const weekdays = Array.from(new Set((show.weekdays || []).map(Number).filter((day) => day >= 0 && day <= 6)));
+        if (!weekdays.length) {
+          events.forEach((event) => weekdays.push(parseDate(event.date).getDay()));
+        }
+        const total = Math.min(200, Math.max(1, events.length || Number(show.totalEpisodes) || 1));
+        const scheduleNote = String(show.scheduleNote || payload.notes || "AI 联网识别结果").slice(0, 120);
+
+        el.titleInput.value = title;
+        el.platformInput.value = String(show.platform || "").slice(0, 20);
+        el.premiereInput.value = premiere;
+        el.timeInput.value = time;
+        el.totalInput.value = total;
+        el.form.querySelectorAll('input[name="days"]').forEach((input) => {
+          input.checked = weekdays.includes(Number(input.value));
+        });
+        if (!Array.from(el.form.querySelectorAll('input[name="days"]')).some((input) => input.checked)) {
+          const fallbackDay = parseDate(premiere).getDay();
+          const fallback = el.form.querySelector(`input[name="days"][value="${fallbackDay}"]`);
+          if (fallback) fallback.checked = true;
+        }
+
+        pendingAiResult = {
+          titleKey: normalizeTitle(title),
+          title,
+          events,
+          sourceUrls,
+          confidence: Number(payload.confidence) || 0,
+          notes: String(payload.notes || "").slice(0, 500),
+          scheduleNote
+        };
+
+        const confidence = Math.round(pendingAiResult.confidence * 100);
+        el.aiConfidence.textContent = `置信度 ${confidence}%`;
+        el.aiResultNote.textContent = pendingAiResult.notes || `识别到 ${events.length} 条有明确日期的更新。`;
+        el.aiSourceList.innerHTML = sourceUrls.map((url) => {
+          const host = new URL(url).hostname.replace(/^www\./, "");
+          return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(host)}</a>`;
+        }).join("");
+        el.aiResult.hidden = false;
+        setAiStatus(
+          events.length
+            ? `已自动填入 ${events.length} 条具体排播，请核对来源后保存。`
+            : "已填入节目基础信息，但未找到可靠的逐集排播，请人工核对。",
+          events.length ? "success" : ""
+        );
+      }
+
+      async function runAiLookup() {
+        const title = el.titleInput.value.trim();
+        if (!title) {
+          setAiStatus("请先输入片名。", "error");
+          el.titleInput.focus();
+          return;
+        }
+        if (!aiSettings.apiKey) {
+          setAiStatus("请先配置 OpenAI API Key。", "error");
+          openAiSettings();
+          return;
+        }
+
+        el.aiFillBtn.disabled = true;
+        el.aiFillBtn.textContent = "正在联网识别…";
+        el.aiResult.hidden = true;
+        setAiStatus("正在搜索官方平台与最新排播，通常需要 10–30 秒…", "loading");
+
+        try {
+          const response = await fetch(aiSettings.endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${aiSettings.apiKey}`
+            },
+            body: JSON.stringify({
+              model: aiSettings.model || "gpt-5-mini",
+              tools: [{ type: "web_search_preview" }],
+              tool_choice: "auto",
+              text: {
+                format: {
+                  type: "json_schema",
+                  name: "tv_broadcast_schedule",
+                  strict: true,
+                  schema: AI_SCHEDULE_SCHEMA
+                }
+              },
+              input: [
+                {
+                  role: "system",
+                  content: [
+                    "你是严谨的影视排播检索员。必须实际使用联网搜索，并优先采用节目官方页面、官方账号和正版平台。",
+                    "只返回有来源支持的资料；无法确认的日期或集数不要猜测。",
+                    "所有时间统一换算成 Asia/Shanghai 的 24 小时制。",
+                    "电视剧要列出具体上线日期、第几集、会员抢先或不同版本的可用时间。",
+                    "综艺要区分正片、上下期、VIP加更、抢鲜版、云陪看、SVIP抢先看和已发布的花絮；不要把同一内容重复计算。",
+                    "events 从今天开始，优先列出官方已公布的未来 8 周；如果已知大结局，可完整列到结局，不要超过 120 条。",
+                    "如果完全无法可靠确认，events 返回空数组，并在 notes 说明原因。"
+                  ].join("\n")
+                },
+                {
+                  role: "user",
+                  content: `当前日期是 ${dateKey(today)}，时区是 Asia/Shanghai。请联网查找《${title}》最新、最完整的播出与会员更新排播，并按要求返回结构化数据。`
+                }
+              ]
+            })
+          });
+
+          const data = await response.json();
+          if (!response.ok) {
+            const detail = data.error?.message || `HTTP ${response.status}`;
+            if (response.status === 401) {
+              throw new Error("API Key 无效或已失效，请重新配置。");
+            }
+            if (response.status === 429) {
+              throw new Error("AI 服务额度不足或请求过于频繁，请稍后再试。");
+            }
+            throw new Error(detail);
+          }
+
+          const text = extractResponseText(data);
+          if (!text) throw new Error("AI 没有返回可解析的排播结果。");
+          let payload;
+          try {
+            payload = JSON.parse(text.replace(/^```json\s*|\s*```$/g, ""));
+          } catch (error) {
+            throw new Error("AI 返回格式不正确，请重试。");
+          }
+          applyAiSchedule(payload);
+          showToast("AI 已填入排播，请核对来源后保存。");
+        } catch (error) {
+          const message = error instanceof TypeError
+            ? "无法连接 AI 代理，请检查部署地址或网络。"
+            : (error.message || "AI 识别失败，请稍后重试。");
+          setAiStatus(message, "error");
+          el.aiResult.hidden = true;
+        } finally {
+          el.aiFillBtn.disabled = false;
+          el.aiFillBtn.textContent = "AI 联网识别";
+        }
+      }
+
       function selectDate(key) {
         selectedDate = key;
         const date = parseDate(key);
@@ -2443,6 +2941,7 @@
         el.form.reset();
         el.formError.textContent = "";
         el.idInput.value = show?.id || "";
+        resetAiLookup(show);
         el.titleInput.value = show?.title || "";
         el.platformInput.value = show?.platform || "";
         el.premiereInput.value = show?.premiere || dateKey(today);
@@ -2478,12 +2977,57 @@
 
       el.addShowTop.addEventListener("click", openAddDialog);
       el.addShowBottom.addEventListener("click", openAddDialog);
+      el.aiFillBtn.addEventListener("click", runAiLookup);
+      el.titleInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          runAiLookup();
+        }
+      });
+      el.aiSettingsBtn.addEventListener("click", openAiSettings);
+      el.aiSettingsClose.addEventListener("click", closeAiSettings);
+      el.aiSettingsCancel.addEventListener("click", closeAiSettings);
+      el.aiSettingsDialog.addEventListener("click", (event) => {
+        if (event.target === el.aiSettingsDialog) closeAiSettings();
+      });
+      el.aiSettingsForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const apiKey = el.aiKeyInput.value.trim();
+        const model = el.aiModelInput.value.trim();
+        const endpoint = el.aiEndpointInput.value.trim() || "/api/ai";
+        if (!apiKey) {
+          el.aiSettingsError.textContent = "请填写 API Key。";
+          el.aiKeyInput.focus();
+          return;
+        }
+        aiSettings = {
+          apiKey,
+          model: model || "gpt-5-mini",
+          endpoint,
+          remember: el.aiRememberInput.checked
+        };
+        try {
+          persistAiSettings();
+          closeAiSettings();
+          setAiStatus("AI 服务已配置，可以开始联网识别。", "success");
+          showToast("AI 服务配置已保存。");
+        } catch (error) {
+          el.aiSettingsError.textContent = "浏览器未能保存设置，请检查隐私设置。";
+        }
+      });
+      el.aiClearBtn.addEventListener("click", () => {
+        localStorage.removeItem(AI_SETTINGS_KEY);
+        sessionStorage.removeItem(AI_SETTINGS_KEY);
+        aiSettings = { apiKey: "", model: "gpt-5-mini", endpoint: "/api/ai", remember: false };
+        el.aiKeyInput.value = "";
+        el.aiRememberInput.checked = false;
+        el.aiSettingsError.textContent = "";
+        showToast("AI API Key 已清除。");
+      });
       el.closeDialog.addEventListener("click", closeDialog);
       el.cancelDialog.addEventListener("click", closeDialog);
       el.dialog.addEventListener("click", (event) => {
-        const rect = el.dialog.getBoundingClientRect();
-        const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
-        if (!inside) closeDialog();
+        if (event.target === el.dialog) closeDialog();
       });
 
       el.form.addEventListener("submit", (event) => {
@@ -2496,6 +3040,11 @@
         const platform = el.platformInput.value.trim();
         const time = el.timeInput.value || "20:00";
         const existingId = el.idInput.value;
+        const aiSchedule = pendingAiResult
+          && normalizeTitle(title) === pendingAiResult.titleKey
+          && pendingAiResult.events.length
+          ? pendingAiResult
+          : null;
 
         if (!title) {
           el.formError.textContent = "请填写剧名。";
@@ -2517,10 +3066,17 @@
           return;
         }
 
+        const aiFields = aiSchedule ? {
+          fixedEpisodes: aiSchedule.events,
+          total: Math.min(200, aiSchedule.events.length),
+          scheduleNote: aiSchedule.scheduleNote,
+          sourceUrl: aiSchedule.sourceUrls[0] || ""
+        } : {};
+
         if (existingId) {
           const index = state.shows.findIndex((show) => show.id === existingId);
           if (index >= 0) {
-            state.shows[index] = { ...state.shows[index], title, platform, premiere, time, total, days: selectedDays, color };
+            state.shows[index] = { ...state.shows[index], title, platform, premiere, time, total, days: selectedDays, color, ...aiFields };
           }
         } else {
           state.shows.push({
@@ -2531,9 +3087,11 @@
             time,
             total,
             days: selectedDays,
-            color
+            color,
+            ...aiFields
           });
         }
+        pendingAiResult = null;
         saveState();
         closeDialog();
         renderAll();
